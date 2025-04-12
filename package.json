@@ -1,6 +1,6 @@
 {
   "name": "lamejs2",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Modern TypeScript rewrite of lamejs MP3 encoder",
   "type": "commonjs",
   "main": "./dist/index.js",
@@ -17,12 +17,16 @@
   },
   "files": [
     "dist",
-    "src"
+    "src/lib",
+    "src/core",
+    "src/index.ts"
   ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "test": "vitest",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "format": "prettier --write src",

@@ -24,7 +24,6 @@ var CBRNewIterationLoop = require('./CBRNewIterationLoop.js');
 var BitStream = require('./BitStream.js');
 var Tables = require('./Tables.js');
 var Encoder = require('./Encoder.js');
-var Presets = require('./Presets.js');
 
 function Lame() {
     var MPEGMode = require('./MPEGMode.js');
@@ -63,14 +62,13 @@ function Lame() {
 
     var ga;
     var bs;
-    var p = new Presets();
+    var p;
     var qupvt;
     var qu;
-    var psy = new PsyModel();  // Initialize PsyModel
+    var psy = new PsyModel();
     var vbr;
     var ver;
     var id3;
-    var mpg;
     var mpglib;
     this.enc = new Encoder();
 
@@ -86,7 +84,6 @@ function Lame() {
         mpglib = _mpglib;
         this.enc.setModules(bs, psy, qupvt, vbr);
     }
-    p.setModules(this);
 
     /**
      * PSY Model related stuff

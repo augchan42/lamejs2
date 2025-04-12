@@ -1,4 +1,4 @@
-declare enum MPEGMode {
+declare const enum MPEGMode {
     STEREO = 0,
     JOINT_STEREO = 1,
     DUAL_CHANNEL = 2,
@@ -27,7 +27,7 @@ interface WavHeader {
 }
 
 declare class Mp3Encoder {
-    private lame;
+    private context;
     private gfp;
     private maxSamples;
     private mp3buf;

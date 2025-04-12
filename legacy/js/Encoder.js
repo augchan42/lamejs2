@@ -123,8 +123,8 @@ function Encoder() {
     var vbr = null;
     var qupvt = null;
 
-    // Explicitly declare setModules as a property
-    /** @private */
+    //public final void setModules(BitStream bs, PsyModel psy, QuantizePVT qupvt,
+    //    VBRTag vbr) {
     this.setModules = function (_bs, _psy, _qupvt, _vbr) {
         bs = _bs;
         this.psy = _psy;

@@ -46,17 +46,16 @@ var Tables = require('./Tables.js');
 var GrInfo = require('./GrInfo.js');
 var QuantizePVT = require('./QuantizePVT.js');
 
-/**
- * @constructor
- * @param {import('./common.js').LameContext} context - The LameContext instance
- */
-function Takehiro(context) {
+
+function Takehiro() {
+
+    var qupvt = null;
     this.qupvt = null;
-    
-    /** @type {(qupvt: import('./QuantizePVT.js').QuantizePVT) => void} */
+
     this.setModules = function (_qupvt) {
         this.qupvt = _qupvt;
-    };
+        qupvt = _qupvt;
+    }
 
     function Bits(b) {
         this.bits = 0 | b;
@@ -100,7 +99,30 @@ function Takehiro(context) {
      *
      * 01/2004: Optimizations by Gabriel Bouvigne
      */
-    this.quantize_lines_xrpow = function(l, istep, xr, xrPos, ix, ixPos) {
+    function quantize_lines_xrpow_01(l, istep, xr, xrPos, ix, ixPos) {
+        var compareval0 = (1.0 - 0.4054) / istep;
+
+        assert(l > 0);
+        l = l >> 1;
+        while ((l--) != 0) {
+            ix[ixPos++] = (compareval0 > xr[xrPos++]) ? 0 : 1;
+            ix[ixPos++] = (compareval0 > xr[xrPos++]) ? 0 : 1;
+        }
+    }
+
+    /**
+     * XRPOW_FTOI is a macro to convert floats to ints.<BR>
+     * if XRPOW_FTOI(x) = nearest_int(x), then QUANTFAC(x)=adj43asm[x]<BR>
+     * ROUNDFAC= -0.0946<BR>
+     *
+     * if XRPOW_FTOI(x) = floor(x), then QUANTFAC(x)=asj43[x]<BR>
+     * ROUNDFAC=0.4054<BR>
+     *
+     * Note: using floor() or 0| is extremely slow. On machines where the
+     * TAKEHIRO_IEEE754_HACK code above does not work, it is worthwile to write
+     * some ASM for XRPOW_FTOI().
+     */
+    function quantize_lines_xrpow(l, istep, xr, xrPos, ix, ixPos) {
         assert(l > 0);
 
         l = l >> 1;
@@ -117,13 +139,13 @@ function Takehiro(context) {
             rx1 = 0 | x1;
             x3 = xr[xrPos++] * istep;
             rx2 = 0 | x2;
-            x0 += this.qupvt.adj43[rx0];
+            x0 += qupvt.adj43[rx0];
             rx3 = 0 | x3;
-            x1 += this.qupvt.adj43[rx1];
+            x1 += qupvt.adj43[rx1];
             ix[ixPos++] = 0 | x0;
-            x2 += this.qupvt.adj43[rx2];
+            x2 += qupvt.adj43[rx2];
             ix[ixPos++] = 0 | x1;
-            x3 += this.qupvt.adj43[rx3];
+            x3 += qupvt.adj43[rx3];
             ix[ixPos++] = 0 | x2;
             ix[ixPos++] = 0 | x3;
         }
@@ -135,35 +157,18 @@ function Takehiro(context) {
             x1 = xr[xrPos++] * istep;
             rx0 = 0 | x0;
             rx1 = 0 | x1;
-            x0 += this.qupvt.adj43[rx0];
-            x1 += this.qupvt.adj43[rx1];
+            x0 += qupvt.adj43[rx0];
+            x1 += qupvt.adj43[rx1];
             ix[ixPos++] = 0 | x0;
             ix[ixPos++] = 0 | x1;
         }
-    };
-
-    /**
-     * nonlinear quantization of xr More accurate formula than the ISO formula.
-     * Takes into account the fact that we are quantizing xr . ix, but we want
-     * ix^4/3 to be as close as possible to x^4/3. (taking the nearest int would
-     * mean ix is as close as possible to xr, which is different.)
-     */
-    this.quantize_lines_xrpow_01 = function(l, istep, xr, xrPos, ix, ixPos) {
-        var compareval0 = (1.0 - 0.4054) / istep;
-
-        assert(l > 0);
-        l = l >> 1;
-        while ((l--) != 0) {
-            ix[ixPos++] = (compareval0 > xr[xrPos++]) ? 0 : 1;
-            ix[ixPos++] = (compareval0 > xr[xrPos++]) ? 0 : 1;
-        }
-    };
+    }
 
     /**
      * Quantization function This function will select which lines to quantize
      * and call the proper quantization function
      */
-    this.quantize_xrpow = function(xp, pi, istep, codInfo, prevNoise) {
+    function quantize_xrpow(xp, pi, istep, codInfo, prevNoise) {
         /* quantize on xr^(3/4) instead of xr */
         var sfb;
         var sfbmax;
@@ -197,7 +202,7 @@ function Takehiro(context) {
 
             if (prev_data_use || codInfo.block_type == Encoder.NORM_TYPE) {
                 step = codInfo.global_gain
-                    - ((codInfo.scalefac[sfb] + (codInfo.preflag != 0 ? this.qupvt.pretab[sfb]
+                    - ((codInfo.scalefac[sfb] + (codInfo.preflag != 0 ? qupvt.pretab[sfb]
                         : 0)) << (codInfo.scalefac_scale + 1))
                     - codInfo.subblock_gain[codInfo.window[sfb]] * 8;
             }
@@ -207,12 +212,12 @@ function Takehiro(context) {
                  * do not recompute this part, but compute accumulated lines
                  */
                 if (accumulate != 0) {
-                    this.quantize_lines_xrpow(accumulate, istep, acc_xp, acc_xpPos,
+                    quantize_lines_xrpow(accumulate, istep, acc_xp, acc_xpPos,
                         acc_iData, acc_iDataPos);
                     accumulate = 0;
                 }
                 if (accumulate01 != 0) {
-                    this.quantize_lines_xrpow_01(accumulate01, istep, acc_xp,
+                    quantize_lines_xrpow_01(accumulate01, istep, acc_xp,
                         acc_xpPos, acc_iData, acc_iDataPos);
                     accumulate01 = 0;
                 }
@@ -247,7 +252,7 @@ function Takehiro(context) {
                     && step >= prevNoise.step[sfb]) {
 
                     if (accumulate != 0) {
-                        this.quantize_lines_xrpow(accumulate, istep, acc_xp,
+                        quantize_lines_xrpow(accumulate, istep, acc_xp,
                             acc_xpPos, acc_iData, acc_iDataPos);
                         accumulate = 0;
                         acc_iData = iData;
@@ -258,7 +263,7 @@ function Takehiro(context) {
                     accumulate01 += l;
                 } else {
                     if (accumulate01 != 0) {
-                        this.quantize_lines_xrpow_01(accumulate01, istep, acc_xp,
+                        quantize_lines_xrpow_01(accumulate01, istep, acc_xp,
                             acc_xpPos, acc_iData, acc_iDataPos);
                         accumulate01 = 0;
                         acc_iData = iData;
@@ -275,12 +280,12 @@ function Takehiro(context) {
                      * optimization
                      */
                     if (accumulate01 != 0) {
-                        this.quantize_lines_xrpow_01(accumulate01, istep, acc_xp,
+                        quantize_lines_xrpow_01(accumulate01, istep, acc_xp,
                             acc_xpPos, acc_iData, acc_iDataPos);
                         accumulate01 = 0;
                     }
                     if (accumulate != 0) {
-                        this.quantize_lines_xrpow(accumulate, istep, acc_xp,
+                        quantize_lines_xrpow(accumulate, istep, acc_xp,
                             acc_xpPos, acc_iData, acc_iDataPos);
                         accumulate = 0;
                     }
@@ -296,16 +301,17 @@ function Takehiro(context) {
             }
         }
         if (accumulate != 0) { /* last data part */
-            this.quantize_lines_xrpow(accumulate, istep, acc_xp, acc_xpPos,
+            quantize_lines_xrpow(accumulate, istep, acc_xp, acc_xpPos,
                 acc_iData, acc_iDataPos);
             accumulate = 0;
         }
         if (accumulate01 != 0) { /* last data part */
-            this.quantize_lines_xrpow_01(accumulate01, istep, acc_xp, acc_xpPos,
+            quantize_lines_xrpow_01(accumulate01, istep, acc_xp, acc_xpPos,
                 acc_iData, acc_iDataPos);
             accumulate01 = 0;
         }
-    };
+
+    }
 
     /**
      * ix_max
@@ -625,18 +631,18 @@ function Takehiro(context) {
         var ix = gi.l3_enc;
 
         /* since quantize_xrpow uses table lookup, we need to check this first: */
-        var w = (QuantizePVT.IXMAX_VAL) / this.qupvt.IPOW20(gi.global_gain);
+        var w = (QuantizePVT.IXMAX_VAL) / qupvt.IPOW20(gi.global_gain);
 
         if (gi.xrpow_max > w)
             return QuantizePVT.LARGE_BITS;
 
-        this.quantize_xrpow(xr, ix, this.qupvt.IPOW20(gi.global_gain), gi, prev_noise);
+        quantize_xrpow(xr, ix, qupvt.IPOW20(gi.global_gain), gi, prev_noise);
 
         if ((gfc.substep_shaping & 2) != 0) {
             var j = 0;
             /* 0.634521682242439 = 0.5946*2**(.5*0.1875) */
             var gain = gi.global_gain + gi.scalefac_scale;
-            var roundfac = 0.634521682242439 / this.qupvt.IPOW20(gain);
+            var roundfac = 0.634521682242439 / qupvt.IPOW20(gain);
             for (var sfb = 0; sfb < gi.sfbmax; sfb++) {
                 var width = gi.width[sfb];
                 assert(width >= 0);
@@ -900,13 +906,13 @@ function Takehiro(context) {
         if (0 == gi.preflag && gi.block_type != Encoder.SHORT_TYPE
             && gfc.mode_gr == 2) {
             for (sfb = 11; sfb < Encoder.SBPSY_l; sfb++)
-                if (gi.scalefac[sfb] < this.qupvt.pretab[sfb]
+                if (gi.scalefac[sfb] < qupvt.pretab[sfb]
                     && gi.scalefac[sfb] != -2)
                     break;
             if (sfb == Encoder.SBPSY_l) {
                 for (sfb = 11; sfb < Encoder.SBPSY_l; sfb++)
                     if (gi.scalefac[sfb] > 0)
-                        gi.scalefac[sfb] -= this.qupvt.pretab[sfb];
+                        gi.scalefac[sfb] -= qupvt.pretab[sfb];
 
                 gi.preflag = recalc = 1;
             }
@@ -988,13 +994,13 @@ function Takehiro(context) {
             tab = scale_long;
             if (0 == cod_info.preflag) {
                 for (sfb = 11; sfb < Encoder.SBPSY_l; sfb++)
-                    if (scalefac[sfb] < this.qupvt.pretab[sfb])
+                    if (scalefac[sfb] < qupvt.pretab[sfb])
                         break;
 
                 if (sfb == Encoder.SBPSY_l) {
                     cod_info.preflag = 1;
                     for (sfb = 11; sfb < Encoder.SBPSY_l; sfb++)
-                        scalefac[sfb] -= this.qupvt.pretab[sfb];
+                        scalefac[sfb] -= qupvt.pretab[sfb];
                 }
             }
         }
@@ -1059,7 +1065,7 @@ function Takehiro(context) {
 
         if (cod_info.block_type == Encoder.SHORT_TYPE) {
             row_in_table = 1;
-            var partition_table = this.qupvt.nr_of_sfb_block[table_number][row_in_table];
+            var partition_table = qupvt.nr_of_sfb_block[table_number][row_in_table];
             for (sfb = 0, partition = 0; partition < 4; partition++) {
                 nr_sfb = partition_table[partition] / 3;
                 for (i = 0; i < nr_sfb; i++, sfb++)
@@ -1069,7 +1075,7 @@ function Takehiro(context) {
             }
         } else {
             row_in_table = 0;
-            var partition_table = this.qupvt.nr_of_sfb_block[table_number][row_in_table];
+            var partition_table = qupvt.nr_of_sfb_block[table_number][row_in_table];
             for (sfb = 0, partition = 0; partition < 4; partition++) {
                 nr_sfb = partition_table[partition];
                 for (i = 0; i < nr_sfb; i++, sfb++)
@@ -1085,7 +1091,7 @@ function Takehiro(context) {
         if (!over) {
             var slen1, slen2, slen3, slen4;
 
-            cod_info.sfb_partition_table = this.qupvt.nr_of_sfb_block[table_number][row_in_table];
+            cod_info.sfb_partition_table = qupvt.nr_of_sfb_block[table_number][row_in_table];
             for (partition = 0; partition < 4; partition++)
                 cod_info.slen[partition] = log2tab[max_sfac[partition]];
 

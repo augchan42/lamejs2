@@ -23,11 +23,3 @@ function ID3TagSpec() {
     this.v2_head = null;
     this.v2_tail = null;
 }
-
-// Add the setModules method to the prototype
-ID3TagSpec.prototype.setModules = function(bs, ver) {
-    this.bs = bs;
-    this.ver = ver;
-};
-
-module.exports = ID3TagSpec;  // Export the constructor

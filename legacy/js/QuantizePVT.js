@@ -43,9 +43,6 @@ var assert = common.assert;
 var Encoder = require('./Encoder.js');
 var MeanBits = require('./MeanBits.js');
 var LameInternalFlags = require('./LameInternalFlags.js');
-var PsyModel = require('./PsyModel.js');
-var Takehiro = require('./Takehiro.js');
-var Reservoir = require('./Reservoir.js');
 
 QuantizePVT.Q_MAX = (256 + 1);
 QuantizePVT.Q_MAX2 = 116;
@@ -54,9 +51,9 @@ QuantizePVT.IXMAX_VAL = 8206;
 
 function QuantizePVT() {
     var BitStream = require('./BitStream.js');
-    var tak = new Takehiro();
-    var rv = new Reservoir();
-    var psy = new PsyModel();
+    var tak = null;
+    var rv = null;
+    var psy = null;
 
     this.setModules = function (_tk, _rv, _psy) {
         tak = _tk;
@@ -97,6 +94,7 @@ function QuantizePVT() {
      *
      * for long block, 0+((15+3)<<2) = 18*4 = 72
      * for short block, 0+(15<<2)+7*8 = 15*4+56 = 116
+     * </CODE>
      */
     var Q_MAX2 = QuantizePVT.Q_MAX2;
 

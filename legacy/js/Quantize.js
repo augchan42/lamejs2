@@ -56,17 +56,10 @@ function Quantize() {
     var rv;
     this.qupvt = null;
     var qupvt;
+
     var vbr = new VBRQuantize();
     var tk;
-    
-    /** 
-     * @type {(
-     *   _bs: any, 
-    *   _rv: any, 
-    *   _qupvt: import('./QuantizePVT.js').QuantizePVT, 
-    *   _tk: any
-    * ) => void}
-    */
+
     this.setModules = function (_bs, _rv, _qupvt, _tk) {
         bs = _bs;
         rv = _rv;
@@ -75,7 +68,7 @@ function Quantize() {
         this.qupvt = _qupvt;
         tk = _tk;
         vbr.setModules(qupvt, tk);
-    };
+    }
 
     /**
      * convert from L/R <. Mid/Side
