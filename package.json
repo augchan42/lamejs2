@@ -1,0 +1,50 @@
+{
+  "name": "lamejs2",
+  "version": "0.1.0",
+  "description": "Modern TypeScript rewrite of lamejs MP3 encoder",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "format": "prettier --write src",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mp3",
+    "encoder",
+    "audio",
+    "webaudio",
+    "typescript",
+    "lamejs"
+  ],
+  "author": "Augustin Chan",
+  "license": "LGPL-3.0",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  }
+}
