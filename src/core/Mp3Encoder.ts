@@ -1,8 +1,6 @@
 import { MPEGMode } from './MPEGMode.js';
 import type { Mp3Config } from './types.js';
-import { createRequire } from 'module';
 
-const require = createRequire(import.meta.url);
 const Lame = require('../lib/Lame');
 const BitStream = require('../lib/BitStream');
 const GainAnalysis = require('../lib/GainAnalysis');
@@ -16,7 +14,7 @@ const QuantizePVT = require('../lib/QuantizePVT');
 const Presets = require('../lib/Presets');
 
 export class Mp3Encoder {
-  private lame: typeof Lame;
+  private lame: any;
   private gfp: any; // Keep as any since it's internal to lamejs
   private maxSamples: number;
   private mp3buf: Uint8Array;

@@ -1,16 +1,18 @@
 {
   "name": "lamejs2",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Modern TypeScript rewrite of lamejs MP3 encoder",
-  "type": "module",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
+  "type": "commonjs",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "browser": "./dist/index.global.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "browser": "./dist/index.global.js",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
     }
   },
   "files": [
