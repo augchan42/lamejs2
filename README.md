@@ -23,12 +23,7 @@ npm install lamejs2
 import { Mp3Encoder, MPEGMode } from 'lamejs2';
 
 // Create encoder (mono 44.1khz @ 128kbps)
-const encoder = new Mp3Encoder({
-  channels: 1,
-  sampleRate: 44100,
-  bitRate: 128,
-  mode: MPEGMode.MONO
-});
+const encoder = new Mp3Encoder(1, 44100, 128);
 
 // Encode some audio samples
 const samples = new Int16Array(44100); // your audio data here
@@ -47,12 +42,7 @@ const blob = new Blob([mp3Data, finalData], { type: 'audio/mp3' });
 import { Mp3Encoder, MPEGMode } from 'lamejs2';
 
 // Create stereo encoder
-const encoder = new Mp3Encoder({
-  channels: 2,
-  sampleRate: 44100,
-  bitRate: 128,
-  mode: MPEGMode.JOINT_STEREO
-});
+const encoder = new Mp3Encoder(2, 44100, 128);
 
 // Encode stereo data
 const left = new Int16Array(44100);  // left channel data
@@ -63,24 +53,29 @@ const mp3Data = encoder.encodeBuffer(left, right);
 const finalData = encoder.flush();
 ```
 
-## API Changes from lamejs
+## API Reference
 
-The main difference is the constructor now takes a config object:
+The encoder constructor takes three parameters:
 
 ```typescript
-// Old lamejs
-const encoder = new lamejs.Mp3Encoder(1, 44100, 128);
-
-// New lamejs2
-const encoder = new Mp3Encoder({
-  channels: 1,
-  sampleRate: 44100,
-  bitRate: 128,
-  mode: MPEGMode.MONO,  // optional
-  quality: 3,           // optional (0=best, 9=worst)
-  maxBuffer: 1152      // optional
-});
+new Mp3Encoder(
+  channels: number,   // 1 for mono, 2 for stereo
+  sampleRate: number, // e.g. 44100
+  kbps: number       // e.g. 128
+)
 ```
+
+If no parameters are provided, it defaults to:
+- channels: 1 (mono)
+- sampleRate: 44100 Hz
+- kbps: 128
+
+The encoder automatically configures optimal settings for:
+- mode (STEREO/MONO based on channels)
+- quality (3)
+- VBR tag writing (disabled)
+- reservoir (disabled)
+- ID3 tag writing (disabled)
 
 ## Performance
 
