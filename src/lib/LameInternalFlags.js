@@ -328,7 +328,7 @@ class LameInternalFlags {
     constructor() {
         // Initialize arrays
         this.mfbuf = [new_float(LameInternalFlags.MFSIZE), new_float(LameInternalFlags.MFSIZE)];
-        // Initialize inbuf_old with enough space for negative indices
+        // Initialize input buffer history for resampling with INBUF_SIZE to handle negative indices
         this.inbuf_old = [new_float(LameInternalFlags.INBUF_SIZE), new_float(LameInternalFlags.INBUF_SIZE)];
         // Initialize sfb21_extra to false by default - will be updated in lame_init_params based on VBR mode and output sample rate
         this.sfb21_extra = false;

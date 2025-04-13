@@ -1,6 +1,29 @@
 # lamejs2
 
-A modern TypeScript rewrite of [lamejs](https://github.com/zhuker/lamejs), the fast JavaScript MP3 encoder. This version maintains the same high performance while adding TypeScript support, better error handling, and a more modern API.
+⚠️ **WARNING: THIS PACKAGE IS CURRENTLY NOT WORKING** ⚠️
+
+This package is a work in progress and currently has critical issues that prevent it from functioning correctly. Known issues include:
+- Buffer handling issues in the core encoder
+- Initialization problems with internal flags
+- Test failures in both mono and stereo encoding
+
+**DO NOT USE IN PRODUCTION**
+
+If you need MP3 encoding capabilities, please use the original [lamejs](https://github.com/zhuker/lamejs) package instead.
+
+---
+
+A modern TypeScript rewrite of [lamejs](https://github.com/zhuker/lamejs), the fast JavaScript MP3 encoder. This version aims to maintain the same high performance while adding TypeScript support, better error handling, and a more modern API, but is currently not functional.
+
+## Current Status
+
+This project is under active development but is not yet ready for use. Major issues need to be resolved before it can be considered stable:
+- Core encoding functionality is broken
+- Tests are failing
+- Buffer handling needs to be fixed
+- Internal state management needs review
+
+We recommend using the original lamejs package until these issues are resolved.
 
 ## Features
 
@@ -14,6 +37,7 @@ A modern TypeScript rewrite of [lamejs](https://github.com/zhuker/lamejs), the f
 ## Installation
 
 ```bash
+# NOT RECOMMENDED - Package is currently non-functional
 npm install lamejs2
 ```
 
