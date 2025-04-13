@@ -29,4 +29,4 @@ class Version {
     }
 }
 
-module.exports = Version;
+export { Version };

@@ -64,7 +64,7 @@
  * </PRE>
  */
 
-var common = require('./common.js');
+import * as common from './common.js';
 var assert = common.assert;
 
 function Reservoir() {
@@ -294,4 +294,4 @@ function Reservoir() {
 	}
 }
 
-module.exports = Reservoir;
+export { Reservoir }

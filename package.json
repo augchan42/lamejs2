@@ -2,7 +2,7 @@
   "name": "lamejs2",
   "version": "0.1.2",
   "description": "Modern TypeScript rewrite of lamejs MP3 encoder",
-  "type": "commonjs",
+  "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "browser": "./dist/index.global.js",
@@ -22,7 +22,8 @@
     "src/index.ts"
   ],
   "scripts": {
-    "build": "tsup",
+    "clean": "rm -rf dist coverage .cursor/cache",
+    "build": "npm run clean && tsup",
     "dev": "tsup --watch",
     "test": "vitest run",
     "test:watch": "vitest",

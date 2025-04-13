@@ -28,7 +28,7 @@
 //package mp3;
 
 //import java.util.Arrays;
-var common = require('./common.js');
+import * as common from './common.js';
 var System = common.System;
 var VbrMode = common.VbrMode;
 var Float = common.Float;
@@ -44,7 +44,7 @@ var new_int = common.new_int;
 var new_int_n = common.new_int_n;
 var assert = common.assert;
 
-var Encoder = require('./Encoder.js');
+import { Encoder } from './Encoder.js';
 
 
 function NewMDCT() {
@@ -1161,4 +1161,4 @@ function NewMDCT() {
 	}
 }
 
-module.exports = NewMDCT;
+export { NewMDCT };

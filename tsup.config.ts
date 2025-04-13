@@ -13,7 +13,9 @@ export default defineConfig({
     options.resolveExtensions = ['.ts', '.js'];
     options.platform = 'browser';
     options.bundle = true;
-    options.mainFields = ['module', 'main'];
+    options.mainFields = ['browser', 'module', 'main'];  // prioritize browser field
     options.target = 'es2018';
+    // Add proper external handling if needed
+    options.external = [];
   }
-}); 
+});

@@ -87,7 +87,7 @@
  *
  *  Optimization/clarity suggestions are welcome.
  */
-var common = require('./common.js');
+import * as common from './common.js';
 var System = common.System;
 var VbrMode = common.VbrMode;
 var Float = common.Float;
@@ -549,4 +549,4 @@ function GainAnalysis() {
 
 }
 
-module.exports = GainAnalysis;
+export { GainAnalysis }

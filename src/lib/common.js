@@ -149,21 +149,21 @@ var assert = function (x) {
     //console.assert(x);
 };
 
-module.exports = {
-    "System": System,
-    "VbrMode": VbrMode,
-    "Float": Float,
-    "ShortBlock": ShortBlock,
-    "Util": Util,
-    "Arrays": Arrays,
-    "new_array_n": new_array_n,
-    "new_byte": new_byte,
-    "new_double": new_double,
-    "new_float": new_float,
-    "new_float_n": new_float_n,
-    "new_int": new_int,
-    "new_int_n": new_int_n,
-    "new_short": new_short,
-    "new_short_n": new_short_n,
-    "assert": assert
+export {
+    System,
+    VbrMode,
+    Float,
+    ShortBlock,
+    Util,
+    Arrays,
+    new_array_n,
+    new_byte,
+    new_double,
+    new_float,
+    new_float_n,
+    new_int,
+    new_int_n,
+    new_short,
+    new_short_n,
+    assert
 };

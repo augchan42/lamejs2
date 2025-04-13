@@ -381,7 +381,13 @@ Tables.t33l = [
     4 + 1, 4 + 2, 4 + 2, 4 + 3, 4 + 2, 4 + 3, 4 + 3, 4 + 4
 ];
 
-Tables.ht = [
+/**
+ * Array of Huffman code table specifications. Indexed by table number (0-33).
+ * @public
+ * @const {HuffCodeTab[]}
+ */
+export const ht = [
+
     /* xlen, linmax, table, hlen */
     new HuffCodeTab(0, 0, null, null),
     new HuffCodeTab(2, 0, Tables.t1HB, Tables.t1l),
@@ -423,14 +429,12 @@ Tables.ht = [
 ];
 
 /**
- * <CODE>
- *  for (i = 0; i < 16*16; i++) [
- *      largetbl[i] = ((ht[16].hlen[i]) << 16) + ht[24].hlen[i];
- *  ]
- * </CODE>
- *
+ * Combined Huffman lengths for tables 16 and 24 (Region 0/1 boundary).
+ * `largetbl[i] = ((ht[16].hlen[i]) << 16) + ht[24].hlen[i];`
+ * @public
+ * @const {number[]}
  */
-Tables.largetbl = [
+export const largetbl = [
     0x010004, 0x050005, 0x070007, 0x090008, 0x0a0009, 0x0a000a, 0x0b000a, 0x0b000b,
     0x0c000b, 0x0c000c, 0x0c000c, 0x0d000c, 0x0d000c, 0x0d000c, 0x0e000d, 0x0a000a,
     0x040005, 0x060006, 0x080007, 0x090008, 0x0a0009, 0x0b000a, 0x0b000a, 0x0b000b,
@@ -464,34 +468,36 @@ Tables.largetbl = [
     0x0a0009, 0x0a0009, 0x0a0009, 0x0b0009, 0x0b0009, 0x0c0009, 0x0c0009, 0x0c0009,
     0x0d0009, 0x0d0009, 0x0d0009, 0x0d000a, 0x0d000a, 0x0d000a, 0x0d000a, 0x0a0006
 ];
+
 /**
- * <CODE>
- *  for (i = 0; i < 3*3; i++) [
- *      table23[i] = ((ht[2].hlen[i]) << 16) + ht[3].hlen[i];
- *  ]
- * </CODE>
- *
+ * Combined Huffman lengths for tables 2 and 3.
+ * `table23[i] = ((ht[2].hlen[i]) << 16) + ht[3].hlen[i];`
+ * @public
+ * @const {number[]}
  */
-Tables.table23 = [
+export const table23 = [
     0x010002, 0x040003, 0x070007,
     0x040004, 0x050004, 0x070007,
     0x060006, 0x070007, 0x080008
 ];
 
 /**
- * <CODE>
- *  for (i = 0; i < 4*4; i++) [
- *       table56[i] = ((ht[5].hlen[i]) << 16) + ht[6].hlen[i];
- *   ]
- * </CODE>
- *
+ * Combined Huffman lengths for tables 5 and 6.
+ * `table56[i] = ((ht[5].hlen[i]) << 16) + ht[6].hlen[i];`
+ * @public
+ * @const {number[]}
  */
-Tables.table56 = [
+export const table56 = [
     0x010003, 0x040004, 0x070006, 0x080008, 0x040004, 0x050004, 0x080006, 0x090007,
     0x070005, 0x080006, 0x090007, 0x0a0008, 0x080007, 0x080007, 0x090008, 0x0a0009
 ];
 
-Tables.bitrate_table = [
+/**
+ * 
+ * @public
+ * @const {number[]}
+ */
+export const bitrate_table = [
     [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, -1], /* MPEG 2 */
     [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, -1], /* MPEG 1 */
     [0, 8, 16, 24, 32, 40, 48, 56, 64, -1, -1, -1, -1, -1, -1, -1], /* MPEG 2.5 */
@@ -511,4 +517,4 @@ Tables.samplerate_table = [
  */
 Tables.scfsi_band = [0, 6, 11, 16, 21];
 
-module.exports = Tables;
+export { Tables }

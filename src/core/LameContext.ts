@@ -1,15 +1,15 @@
-import Version from '../lib/Version.js';
-import BitStream from '../lib/BitStream.js';
-import GainAnalysis from '../lib/GainAnalysis.js';
-import Quantize from '../lib/Quantize.js';
-import VBRTag from '../lib/VBRTag.js';
-import ID3TagSpec from '../lib/ID3TagSpec.js';
-import Reservoir from '../lib/Reservoir.js';
-import Takehiro from '../lib/Takehiro.js';
-import QuantizePVT from '../lib/QuantizePVT.js';
-import Presets from '../lib/Presets.js';
-import Lame from '../lib/Lame.js';
-import PsyModel from '../lib/PsyModel.js';
+import { Version } from '../lib/Version.js';
+import { BitStream } from '../lib/BitStream.js';
+import { GainAnalysis } from '../lib/GainAnalysis.js';
+import { Quantize} from '../lib/Quantize.js';
+import { VBRTag } from '../lib/VBRTag.js';
+import { ID3TagSpec } from '../lib/ID3TagSpec.js';
+import { Reservoir } from '../lib/Reservoir.js';
+import { Takehiro } from '../lib/Takehiro.js';
+import { QuantizePVT } from '../lib/QuantizePVT.js';
+import { Presets } from '../lib/Presets.js';
+import { Lame } from '../lib/Lame.js';
+import { PsyModel } from '../lib/PsyModel.js';
 
 export class LameContext {
     // All module instances

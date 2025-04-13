@@ -1,390 +1,413 @@
-var common = require('./common.js');
-var System = common.System;
-var VbrMode = common.VbrMode;
-var Float = common.Float;
-var ShortBlock = common.ShortBlock;
-var Util = common.Util;
-var Arrays = common.Arrays;
-var new_array_n = common.new_array_n;
-var new_byte = common.new_byte;
-var new_double = common.new_double;
-var new_float = common.new_float;
-var new_float_n = common.new_float_n;
-var new_int = common.new_int;
-var new_int_n = common.new_int_n;
-var assert = common.assert;
+/**
+ * @fileoverview Internal flags and state variables for the LAME encoder.
+ * Ported from internal_flags.h. Contains detailed configuration derived
+ * from global flags, psychoacoustic model state, bitstream state, etc.
+ * Uses ES Module syntax.
+ *
+ * @module LameInternalFlags
+ */
 
-var IIISideInfo = require('./IIISideInfo.js');
-var ScaleFac = require('./ScaleFac.js');
-var NsPsy = require('./NsPsy.js');
-var VBRSeekInfo = require('./VBRSeekInfo.js');
-var III_psy_xmin = require('./III_psy_xmin.js');
-var Encoder = require('./Encoder.js');
-var L3Side = require('./L3Side.js');
+// Import necessary modules and utilities using ES Module syntax
+import * as common from './common.js';
+import { IIISideInfo } from './IIISideInfo.js';
+import { ScaleFac } from './ScaleFac.js';
+import { NsPsy } from './NsPsy.js';
+import { VBRSeekInfo } from './VBRSeekInfo.js';
+import { III_psy_xmin } from './III_psy_xmin.js';
+import { Encoder, SBMAX_l, SBMAX_s } from './Encoder.js';
+import { L3Side } from './L3Side.js';
+// Assuming these types are defined elsewhere and imported if needed for full type safety
+/** @typedef {import('./ATH.js').ATH} ATH */
+/** @typedef {import('./ReplayGain.js').ReplayGain} ReplayGain */
+/** @typedef {import('./IterationLoop.js').IterationLoop} IterationLoop */
+/** @typedef {import('./ID3TagSpec.js').ID3TagSpec} ID3TagSpec */
+/** @typedef {import('./MPGLib.js').MPGLib} MPGLib */ // Placeholder type
+/** @typedef {import('./PlottingData.js').PlottingData} PlottingData */ // Placeholder type
 
+// Destructure common utilities for easier access
+const {
+    // System, // Not used
+    // VbrMode, // Not used directly
+    // Float, // Not used
+    // ShortBlock, // Not used
+    // Util, // Not used
+    Arrays, // Keep for potential fill/sort usage
+    new_array_n,
+    new_byte,
+    // new_double, // Use Float64Array directly
+    new_float,
+    new_float_n,
+    new_int,
+    new_int_n,
+    assert
+} = common;
 
-LameInternalFlags.MFSIZE = (3 * 1152 + Encoder.ENCDELAY - Encoder.MDCTDELAY);
-LameInternalFlags.MAX_HEADER_BUF = 256;
-LameInternalFlags.MAX_BITS_PER_CHANNEL = 4095;
-LameInternalFlags.MAX_BITS_PER_GRANULE = 7680;
-LameInternalFlags.BPC = 320;
-
-function LameInternalFlags() {
-    var MAX_HEADER_LEN = 40;
-
-
-    /********************************************************************
-     * internal variables NOT set by calling program, and should not be *
-     * modified by the calling program *
-     ********************************************************************/
-
-    /**
-     * Some remarks to the Class_ID field: The Class ID is an Identifier for a
-     * pointer to this struct. It is very unlikely that a pointer to
-     * lame_global_flags has the same 32 bits in it's structure (large and other
-     * special properties, for instance prime).
-     *
-     * To test that the structure is right and initialized, use: if ( gfc .
-     * Class_ID == LAME_ID ) ... Other remark: If you set a flag to 0 for uninit
-     * data and 1 for init data, the right test should be "if (flag == 1)" and
-     * NOT "if (flag)". Unintended modification of this element will be
-     * otherwise misinterpreted as an init.
-     */
-    this.Class_ID = 0;
-
-    this.lame_encode_frame_init = 0;
-    this.iteration_init_init = 0;
-    this.fill_buffer_resample_init = 0;
-
-    //public float mfbuf[][] = new float[2][MFSIZE];
-    this.mfbuf = new_float_n([2, LameInternalFlags.MFSIZE]);
-
-    /**
-     * granules per frame
-     */
-    this.mode_gr = 0;
-    /**
-     * number of channels in the input data stream (PCM or decoded PCM)
-     */
-    this.channels_in = 0;
-    /**
-     * number of channels in the output data stream (not used for decoding)
-     */
-    this.channels_out = 0;
-    /**
-     * input_samp_rate/output_samp_rate
-     */
-        //public double resample_ratio;
-    this.resample_ratio = 0.;
-
-    this.mf_samples_to_encode = 0;
-    this.mf_size = 0;
-    /**
-     * min bitrate index
-     */
-    this.VBR_min_bitrate = 0;
-    /**
-     * max bitrate index
-     */
-    this.VBR_max_bitrate = 0;
-    this.bitrate_index = 0;
-    this.samplerate_index = 0;
-    this.mode_ext = 0;
-
-    /* lowpass and highpass filter control */
-    /**
-     * normalized frequency bounds of passband
-     */
-    this.lowpass1 = 0.;
-    this.lowpass2 = 0.;
-    /**
-     * normalized frequency bounds of passband
-     */
-    this.highpass1 = 0.;
-    this.highpass2 = 0.;
-
-    /**
-     * 0 = none 1 = ISO AAC model 2 = allow scalefac_select=1
-     */
-    this.noise_shaping = 0;
-
-    /**
-     * 0 = ISO model: amplify all distorted bands<BR>
-     * 1 = amplify within 50% of max (on db scale)<BR>
-     * 2 = amplify only most distorted band<BR>
-     * 3 = method 1 and refine with method 2<BR>
-     */
-    this.noise_shaping_amp = 0;
-    /**
-     * 0 = no substep<BR>
-     * 1 = use substep shaping at last step(VBR only)<BR>
-     * (not implemented yet)<BR>
-     * 2 = use substep inside loop<BR>
-     * 3 = use substep inside loop and last step<BR>
-     */
-    this.substep_shaping = 0;
-
-    /**
-     * 1 = gpsycho. 0 = none
-     */
-    this.psymodel = 0;
-    /**
-     * 0 = stop at over=0, all scalefacs amplified or<BR>
-     * a scalefac has reached max value<BR>
-     * 1 = stop when all scalefacs amplified or a scalefac has reached max value<BR>
-     * 2 = stop when all scalefacs amplified
-     */
-    this.noise_shaping_stop = 0;
-
-    /**
-     * 0 = no, 1 = yes
-     */
-    this.subblock_gain = 0;
-    /**
-     * 0 = no. 1=outside loop 2=inside loop(slow)
-     */
-    this.use_best_huffman = 0;
-
-    /**
-     * 0 = stop early after 0 distortion found. 1 = full search
-     */
-    this.full_outer_loop = 0;
-
-    //public IIISideInfo l3_side = new IIISideInfo();
-    this.l3_side = new IIISideInfo();
-    this.ms_ratio = new_float(2);
-
-    /* used for padding */
-    /**
-     * padding for the current frame?
-     */
-    this.padding = 0;
-    this.frac_SpF = 0;
-    this.slot_lag = 0;
-
-    /**
-     * optional ID3 tags
-     */
-        //public ID3TagSpec tag_spec;
-    this.tag_spec = null;
-    this.nMusicCRC = 0;
-
-    /* variables used by Quantize */
-    //public int OldValue[] = new int[2];
-    this.OldValue = new_int(2);
-    //public int CurrentStep[] = new int[2];
-    this.CurrentStep = new_int(2);
-
-    this.masking_lower = 0.;
-    //public int bv_scf[] = new int[576];
-    this.bv_scf = new_int(576);
-    //public int pseudohalf[] = new int[L3Side.SFBMAX];
-    this.pseudohalf = new_int(L3Side.SFBMAX);
-
-    /**
-     * will be set in lame_init_params
-     */
-    this.sfb21_extra = false;
-
-    /* BPC = maximum number of filter convolution windows to precompute */
-    //public float[][] inbuf_old = new float[2][];
-    this.inbuf_old = new Array(2);
-    //public float[][] blackfilt = new float[2 * BPC + 1][];
-    this.blackfilt = new Array(2 * LameInternalFlags.BPC + 1);
-    //public double itime[] = new double[2];
-    this.itime = new_double(2);
-    this.sideinfo_len = 0;
-
-    /* variables for newmdct.c */
-    //public float sb_sample[][][][] = new float[2][2][18][Encoder.SBLIMIT];
-    this.sb_sample = new_float_n([2, 2, 18, Encoder.SBLIMIT]);
-    this.amp_filter = new_float(32);
-
-    /* variables for BitStream */
-
-    /**
-     * <PRE>
-     * mpeg1: buffer=511 bytes  smallest frame: 96-38(sideinfo)=58
-     * max number of frames in reservoir:  8
-     * mpeg2: buffer=255 bytes.  smallest frame: 24-23bytes=1
-     * with VBR, if you are encoding all silence, it is possible to
-     * have 8kbs/24khz frames with 1byte of data each, which means we need
-     * to buffer up to 255 headers!
-     * </PRE>
-     */
-    /**
-     * also, max_header_buf has to be a power of two
-     */
-    /**
-     * max size of header is 38
-     */
-
-    function Header() {
-        this.write_timing = 0;
-        this.ptr = 0;
-        //public byte buf[] = new byte[MAX_HEADER_LEN];
-        this.buf = new_byte(MAX_HEADER_LEN);
-    }
-
-    this.header = new Array(LameInternalFlags.MAX_HEADER_BUF);
-
-    this.h_ptr = 0;
-    this.w_ptr = 0;
-    this.ancillary_flag = 0;
-
-    /* variables for Reservoir */
-    /**
-     * in bits
-     */
-    this.ResvSize = 0;
-    /**
-     * in bits
-     */
-    this.ResvMax = 0;
-
-    //public ScaleFac scalefac_band = new ScaleFac();
-    this.scalefac_band = new ScaleFac();
-
-    /* daa from PsyModel */
-    /* The static variables "r", "phi_sav", "new", "old" and "oldest" have */
-    /* to be remembered for the unpredictability measure. For "r" and */
-    /* "phi_sav", the first index from the left is the channel select and */
-    /* the second index is the "age" of the data. */
-    this.minval_l = new_float(Encoder.CBANDS);
-    this.minval_s = new_float(Encoder.CBANDS);
-    this.nb_1 = new_float_n([4, Encoder.CBANDS]);
-    this.nb_2 = new_float_n([4, Encoder.CBANDS]);
-    this.nb_s1 = new_float_n([4, Encoder.CBANDS]);
-    this.nb_s2 = new_float_n([4, Encoder.CBANDS]);
-    this.s3_ss = null;
-    this.s3_ll = null;
-    this.decay = 0.;
-
-    //public III_psy_xmin[] thm = new III_psy_xmin[4];
-    //public III_psy_xmin[] en = new III_psy_xmin[4];
-    this.thm = new Array(4);
-    this.en = new Array(4);
-
-    /**
-     * fft and energy calculation
-     */
-    this.tot_ener = new_float(4);
-
-    /* loudness calculation (for adaptive threshold of hearing) */
-    /**
-     * loudness^2 approx. per granule and channel
-     */
-    this.loudness_sq = new_float_n([2, 2]);
-    /**
-     * account for granule delay of L3psycho_anal
-     */
-    this.loudness_sq_save = new_float(2);
-
-    /**
-     * Scale Factor Bands
-     */
-    this.mld_l = new_float(Encoder.SBMAX_l);
-    this.mld_s = new_float(Encoder.SBMAX_s);
-    this.bm_l = new_int(Encoder.SBMAX_l);
-    this.bo_l = new_int(Encoder.SBMAX_l);
-    this.bm_s = new_int(Encoder.SBMAX_s);
-    this.bo_s = new_int(Encoder.SBMAX_s);
-    this.npart_l = 0;
-    this.npart_s = 0;
-
-    this.s3ind = new_int_n([Encoder.CBANDS, 2]);
-    this.s3ind_s = new_int_n([Encoder.CBANDS, 2]);
-
-    this.numlines_s = new_int(Encoder.CBANDS);
-    this.numlines_l = new_int(Encoder.CBANDS);
-    this.rnumlines_l = new_float(Encoder.CBANDS);
-    this.mld_cb_l = new_float(Encoder.CBANDS);
-    this.mld_cb_s = new_float(Encoder.CBANDS);
-    this.numlines_s_num1 = 0;
-    this.numlines_l_num1 = 0;
-
-    /* ratios */
-    this.pe = new_float(4);
-    this.ms_ratio_s_old = 0.;
-    this.ms_ratio_l_old = 0.;
-    this.ms_ener_ratio_old = 0.;
-
-    /**
-     * block type
-     */
-    this.blocktype_old = new_int(2);
-
-    /**
-     * variables used for --nspsytune
-     */
-    this.nsPsy = new NsPsy();
-
-    /**
-     * used for Xing VBR header
-     */
-    this.VBR_seek_table = new VBRSeekInfo();
-
-    /**
-     * all ATH related stuff
-     */
-        //public ATH ATH;
-    this.ATH = null;
-
-    this.PSY = null;
-
-    this.nogap_total = 0;
-    this.nogap_current = 0;
-
-    /* ReplayGain */
-    this.decode_on_the_fly = true;
-    this.findReplayGain = true;
-    this.findPeakSample = true;
-    this.PeakSample = 0.;
-    this.RadioGain = 0;
-    this.AudiophileGain = 0;
-    //public ReplayGain rgdata;
-    this.rgdata = null;
-
-    /**
-     * gain change required for preventing clipping
-     */
-    this.noclipGainChange = 0;
-    /**
-     * user-specified scale factor required for preventing clipping
-     */
-    this.noclipScale = 0.;
-
-    /* simple statistics */
-    this.bitrate_stereoMode_Hist = new_int_n([16, 4 + 1]);
-    /**
-     * norm/start/short/stop/mixed(short)/sum
-     */
-    this.bitrate_blockType_Hist = new_int_n([16, 4 + 1 + 1]);
-
-    //public PlottingData pinfo;
-    //public MPGLib.mpstr_tag hip;
-    this.pinfo = null;
-    this.hip = null;
-
-    this.in_buffer_nsamples = 0;
-    //public float[] in_buffer_0;
-    //public float[] in_buffer_1;
-    this.in_buffer_0 = null;
-    this.in_buffer_1 = null;
-
-    //public IIterationLoop iteration_loop;
-    this.iteration_loop = null;
-
-    for (var i = 0; i < this.en.length; i++) {
-        this.en[i] = new III_psy_xmin();
-    }
-    for (var i = 0; i < this.thm.length; i++) {
-        this.thm[i] = new III_psy_xmin();
-    }
-    for (var i = 0; i < this.header.length; i++) {
-        this.header[i] = new Header();
-    }
-
+// Helper to create the nested structure for en/thm used in the constructor
+/** @private */
+function createMaskingInfoInternal() {
+    // Helper for internal flags initialization
+    return {
+        l: new_float(SBMAX_l),
+        // Array of [SBMAX_s] Float32Arrays[3]
+        s: new_float_n([SBMAX_s, 3])
+    };
 }
 
-module.exports = LameInternalFlags;
+
+/**
+ * @classdesc Holds internal state variables and configuration flags used during encoding.
+ * This structure is not meant to be directly manipulated by the application; it's
+ * populated and used internally by LAME based on the `LameGlobalFlags`.
+ * @constructs LameInternalFlags
+ */
+class LameInternalFlags {
+    // --- Static Constants ---
+    /** Size of main filter buffer mfbuf */
+    static MFSIZE = (3 * 1152 + Encoder.ENCDELAY - Encoder.MDCTDELAY);
+    /** Max size for header buffer array */
+    static MAX_HEADER_BUF = 256;
+    /** Max bits for a channel in a granule */
+    static MAX_BITS_PER_CHANNEL = 4095;
+    /** Max bits for a granule (sum of channels) */
+    static MAX_BITS_PER_GRANULE = 7680;
+    /** Max Coefficients per block for resampling filter calc? */
+    static BPC = 320;
+    /** Size of one channel's resample history buffer */
+    static INBUF_SIZE = 4096; // Size used in original C internal_flags.h for inbuf_old
+
+    // --- Properties ---
+
+    /** Class Identifier (for type checking) @public @type {number} */
+    Class_ID = 0;
+
+    /** Initialization flag for lame_encode_frame @public @type {number} */
+    lame_encode_frame_init = 0;
+    /** Initialization flag for iteration_init @public @type {number} */
+    iteration_init_init = 0;
+    /** Initialization flag for resampler @public @type {number} */
+    fill_buffer_resample_init = 0;
+
+    /** Input buffer for MDCT [2][MFSIZE] @public @type {Array<Float32Array>} */
+    mfbuf;
+
+    /** Input buffer history for resampling [2][BLACKSIZE] @public @type {Array<Float32Array>} */
+    inbuf_old;
+
+    /** Noise history buffer 1 [4][CBANDS] @public @type {Array<Float32Array>} */
+    nb_1;
+    /** Noise history buffer 2 [4][CBANDS] @public @type {Array<Float32Array>} */
+    nb_2;
+    /** Short block noise history buffer 1 [4][CBANDS] @public @type {Array<Float32Array>} */
+    nb_s1;
+    /** Short block noise history buffer 2 [4][CBANDS] @public @type {Array<Float32Array>} */
+    nb_s2;
+
+    /** Loudness calculation state [ch] @public @type {Float32Array} */
+    loudness_sq_save;
+    /** Loudness squared per granule/channel [gr][ch] @public @type {Array<Float32Array>} */
+    loudness_sq;
+
+
+    // Psychoacoustic model internal arrays (sizes set, filled later)
+    /** Number of lines in long partition bands [CBANDS] @public @type {Int32Array} */
+    numlines_l;
+    /** Number of lines in short partition bands [CBANDS] @public @type {Int32Array} */
+    numlines_s;
+    /** Boundary partition index for long sfbs [SBMAX_l] @public @type {Int32Array} */
+    bo_l;
+    /** Boundary partition index for short sfbs [SBMAX_s] @public @type {Int32Array} */
+    bo_s;
+    /** Mid partition index for long sfbs [SBMAX_l] @public @type {Int32Array} */
+    bm_l;
+    /** Mid partition index for short sfbs [SBMAX_s] @public @type {Int32Array} */
+    bm_s;
+    /** MLD factor per long sfb [SBMAX_l] @public @type {Float32Array} */
+    mld_l;
+    /** MLD factor per short sfb [SBMAX_s] @public @type {Float32Array} */
+    mld_s;
+    /** MLD factor per long partition band [CBANDS] @public @type {Float32Array} */
+    mld_cb_l;
+    /** MLD factor per short partition band [CBANDS] @public @type {Float32Array} */
+    mld_cb_s;
+    /** Reciprocal number of lines in long partition bands [CBANDS] @public @type {Float32Array} */
+    rnumlines_l;
+    /** Spreading function indices [CBANDS][2] @public @type {Array<Int32Array>} */
+    s3ind;
+    /** Short block spreading function indices [CBANDS][2] @public @type {Array<Int32Array>} */
+    s3ind_s;
+    /** Flattened long block spreading function values @public @type {Float32Array | null} */
+    s3_ll = null;
+    /** Flattened short block spreading function values @public @type {Float32Array | null} */
+    s3_ss = null;
+    /** Min value table for long blocks [CBANDS] @public @type {Float32Array} */
+    minval_l;
+    /** Min value table for short blocks [CBANDS] @public @type {Float32Array} */
+    minval_s;
+    /** State for substep shaping [SBMAX_l]? @public @type {Int32Array} */
+    pseudohalf;
+    /** Total energy per channel [4] @public @type {Float32Array} */
+    tot_ener;
+    /** Temporal masking decay factor @public @type {number} */
+    decay = 0.0;
+
+
+    /** Granules per frame (1 or 2) @public @type {number} */
+    mode_gr = 0;
+    /** Number of input channels @public @type {number} */
+    channels_in = 0;
+    /** Number of output channels @public @type {number} */
+    channels_out = 0;
+    /** Resampling ratio (in/out) @public @type {number} */
+    resample_ratio = 0.0;
+
+    /** Samples remaining in internal buffers to be encoded @public @type {number} */
+    mf_samples_to_encode = 0;
+    /** Current number of valid samples in mfbuf @public @type {number} */
+    mf_size = 0;
+    /** Min VBR bitrate index @public @type {number} */
+    VBR_min_bitrate = 0;
+    /** Max VBR bitrate index @public @type {number} */
+    VBR_max_bitrate = 0;
+    /** Current frame bitrate index @public @type {number} */
+    bitrate_index = 0;
+    /** Output samplerate index @public @type {number} */
+    samplerate_index = 0;
+    /** Stereo mode extension (e.g., MS/LR) @public @type {number} */
+    mode_ext = 0;
+
+    /* lowpass and highpass filter control */
+    /** Normalized lower freq bound of lowpass @public @type {number} */
+    lowpass1 = 0.0;
+    /** Normalized upper freq bound of lowpass @public @type {number} */
+    lowpass2 = 0.0;
+    /** Normalized lower freq bound of highpass @public @type {number} */
+    highpass1 = 0.0;
+    /** Normalized upper freq bound of highpass @public @type {number} */
+    highpass2 = 0.0;
+
+    /* Noise shaping controls */
+    /** @public @type {number} */ noise_shaping = 0;
+    /** @public @type {number} */ noise_shaping_amp = 0;
+    /** @public @type {number} */ substep_shaping = 0;
+    /** @public @type {number} */ noise_shaping_stop = 0;
+    /** @public @type {number} */ subblock_gain = 0;
+
+    /** Psychoacoustic model active flag (0=off, 1=on) @public @type {number} */
+    psymodel = 0;
+    /** Use best Huffman table division @public @type {number} */
+    use_best_huffman = 0;
+    /** Force full outer loop search @public @type {number} */
+    full_outer_loop = 0;
+
+    /** Side info structure for the current frame @public @type {IIISideInfo} */
+    l3_side;
+
+    /* Padding state */
+    /** Padding flag for current frame @public @type {number} */
+    padding = 0;
+    /** Fractional samples per frame (for padding calc) @public @type {number} */
+    frac_SpF = 0.0;
+    /** Slot lag for CBR padding @public @type {number} */
+    slot_lag = 0;
+
+    /** ID3 tag specification (details for tag writing) @public @type {ID3TagSpec | null} */
+    tag_spec = null;
+    /** Music CRC value @public @type {number} */
+    nMusicCRC = 0;
+
+    /* Quantization loop state */
+    /** Previous global gain values [ch] @public @type {Int32Array} */
+    OldValue;
+    /** Current gain step size [ch] @public @type {Int32Array} */
+    CurrentStep;
+    /** Global masking adjustment factor @public @type {number} */
+    masking_lower = 0.0;
+    /** Scalefactor per coefficient (temporary?) [576] @public @type {Int32Array} */
+    bv_scf;
+
+    /** Use sfb21/sfb12 bands beyond standard limits. Will be properly set in lame_init_params based on VBR mode and output sample rate. @public @type {boolean} */
+    sfb21_extra;
+
+    /* Resampling state */
+    /** Precomputed filter coefficients [joff][filter_l+1] @public @type {Array<Float32Array | null>} */
+    blackfilt;
+    /** Time offset for resampling [ch] @public @type {Float64Array} */
+    itime;
+
+    /** Length of side info in bytes @public @type {number} */
+    sideinfo_len = 0;
+
+    /* mdct state */
+    /** Polyphase filterbank outputs [ch][gr][sfb][coeff] @public @type {Array<Array<Array<Float32Array>>>} */
+    sb_sample;
+    /** Polyphase filter amplitude adjustment [32] @public @type {Float32Array} */
+    amp_filter;
+
+    /* Header/Ancillary data state (if writing custom headers) */
+    /** Header buffer objects @public @type {Array<object>} */
+    header;
+    /** Current header read pointer @public @type {number} */
+    h_ptr = 0;
+    /** Current header write pointer @public @type {number} */
+    w_ptr = 0;
+    /** Flag for ancillary data @public @type {number} */
+    ancillary_flag = 0;
+
+    /* Reservoir state */
+    /** Current reservoir size (bits) @public @type {number} */
+    ResvSize = 0;
+    /** Max reservoir size (bits) @public @type {number} */
+    ResvMax = 0;
+
+    /** Scalefactor band boundary information @public @type {ScaleFac} */
+    scalefac_band;
+
+    /* Masking thresholds and energies (potentially M/S) [4] */
+    /** Threshold per sfb @public @type {Array<{l: Float32Array, s: Array<Float32Array>}>} */
+    thm;
+    /** Energy per sfb @public @type {Array<{l: Float32Array, s: Array<Float32Array>}>} */
+    en;
+
+    /* M/S ratio history */
+    /** @public @type {number} */ ms_ratio_s_old = 0.0;
+    /** @public @type {number} */ ms_ratio_l_old = 0.0;
+    /** @public @type {number} */ ms_ener_ratio_old = 0.0;
+
+    /** Previous granule block type [ch] @public @type {Int32Array} */
+    blocktype_old;
+
+    /** NS PsyTune specific state @public @type {NsPsy} */
+    nsPsy;
+
+    /** VBR tag seek table information @public @type {VBRSeekInfo} */
+    VBR_seek_table;
+
+    /** ATH calculation results @public @type {ATH | null} */
+    ATH = null;
+    /** Psychoacoustic model parameters (internal class) @public @type {_PSY | null} */
+    PSY = null; // Refers to internal _PSY class
+
+    /* Gapless encoding state */
+    /** Total samples for gapless info @public @type {number} */
+    nogap_total = 0;
+    /** Current sample count for gapless info @public @type {number} */
+    nogap_current = 0;
+
+    /* ReplayGain state */
+    /** @public @type {boolean} */ decode_on_the_fly = false; // Default to false
+    /** @public @type {boolean} */ findReplayGain = false;
+    /** @public @type {boolean} */ findPeakSample = false;
+    /** @public @type {number} */ PeakSample = 0.0;
+    /** @public @type {number} */ RadioGain = 0;
+    /** @public @type {number} */ AudiophileGain = 0;
+    /** ReplayGain analysis data @public @type {ReplayGain | null} */
+    rgdata = null;
+    /** @public @type {number} */ noclipGainChange = 0;
+    /** @public @type {number} */ noclipScale = 0.0;
+
+    /* Simple statistics */
+    /** Histogram [bitrate_idx][mode+1] @public @type {Array<Int32Array> | null} */
+    bitrate_stereoMode_Hist = null;
+    /** Histogram [bitrate_idx][blockType+1] @public @type {Array<Int32Array> | null} */
+    bitrate_blockType_Hist = null;
+
+    /** Plotting/Analysis info structure @public @type {PlottingData | null} */
+    pinfo = null;
+    /** mpglib decoder instance (if decode_on_the_fly) @public @type {MPGLib | null} */
+    hip = null;
+
+    /* Input buffer state (used by lame_encode_buffer) */
+    /** @public @type {number} */ in_buffer_nsamples = 0;
+    /** @public @type {Float32Array | null} */ in_buffer_0 = null;
+    /** @public @type {Float32Array | null} */ in_buffer_1 = null;
+
+    /** Function pointer to the selected iteration loop @public @type {IterationLoop | null} */
+    iteration_loop = null;
+
+    // --- Constructor ---
+    constructor() {
+        // Initialize arrays
+        this.mfbuf = [new_float(LameInternalFlags.MFSIZE), new_float(LameInternalFlags.MFSIZE)];
+        // Initialize inbuf_old with enough space for negative indices
+        this.inbuf_old = [new_float(LameInternalFlags.INBUF_SIZE), new_float(LameInternalFlags.INBUF_SIZE)];
+        // Initialize sfb21_extra to false by default - will be updated in lame_init_params based on VBR mode and output sample rate
+        this.sfb21_extra = false;
+
+        // Initialize noise history buffers
+        this.nb_1 = new_float_n([4, Encoder.CBANDS]);
+        this.nb_2 = new_float_n([4, Encoder.CBANDS]);
+        this.nb_s1 = new_float_n([4, Encoder.CBANDS]);
+        this.nb_s2 = new_float_n([4, Encoder.CBANDS]);
+        this.loudness_sq_save = new_float(2);
+        this.loudness_sq = new_float_n([2, 2]); // Initialize loudness_sq array
+        this.numlines_l = new_int(Encoder.CBANDS);
+        this.numlines_s = new_int(Encoder.CBANDS);
+        this.bo_l = new_int(Encoder.SBMAX_l);
+        this.bo_s = new_int(Encoder.SBMAX_s);
+        this.bm_l = new_int(Encoder.SBMAX_l);
+        this.bm_s = new_int(Encoder.SBMAX_s);
+        this.mld_l = new_float(Encoder.SBMAX_l);
+        this.mld_s = new_float(Encoder.SBMAX_s);
+        this.mld_cb_l = new_float(Encoder.CBANDS);
+        this.mld_cb_s = new_float(Encoder.CBANDS);
+        this.rnumlines_l = new_float(Encoder.CBANDS);
+        this.s3ind = new_int_n([Encoder.CBANDS, 2]);
+        this.s3ind_s = new_int_n([Encoder.CBANDS, 2]);
+        this.minval_l = new_float(Encoder.CBANDS);
+        this.minval_s = new_float(Encoder.CBANDS);
+        this.pseudohalf = new_int(Encoder.SBMAX_l);
+        this.tot_ener = new_float(4);
+        this.OldValue = new_int(2);
+        this.CurrentStep = new_int(2);
+        this.bv_scf = new_int(576);
+        this.blackfilt = new Array(2 * LameInternalFlags.BPC + 1).fill(null);
+        this.itime = new Float64Array(2); // Use Float64Array directly
+        this.sb_sample = new_array_n([2, 2, 18, Encoder.SBLIMIT], () => 0.0);
+        this.amp_filter = new_float(32);
+        this.header = new Array(LameInternalFlags.MAX_HEADER_BUF);
+        this.scalefac_band = new ScaleFac();
+        this.thm = new Array(4);
+        this.en = new Array(4);
+        for (let i = 0; i < 4; i++) {
+            this.thm[i] = new III_psy_xmin();
+            this.en[i] = new III_psy_xmin();
+        }
+        this.blocktype_old = new_int(2);
+        this.nsPsy = new NsPsy();
+        this.VBR_seek_table = new VBRSeekInfo();
+        this.l3_side = new IIISideInfo();
+
+        // Initialize Header array elements
+        for (let i = 0; i < LameInternalFlags.MAX_HEADER_BUF; i++) {
+             class Header {
+                 constructor() { this.write_timing = 0; this.ptr = 0; this.buf = new_byte(40); }
+             }
+            this.header[i] = new Header();
+        }
+
+        // Ensure histogram arrays are initialized
+        if (!this.bitrate_stereoMode_Hist) this.bitrate_stereoMode_Hist = new_int_n([16, 5]);
+        if (!this.bitrate_blockType_Hist) this.bitrate_blockType_Hist = new_int_n([16, 6]);
+
+        // Initialize other nullable properties to null explicitly
+        this.ATH = null;
+        this.PSY = null;
+        this.rgdata = null;
+        this.iteration_loop = null;
+        this.hip = null;
+        this.pinfo = null;
+        this.tag_spec = null;
+        this.in_buffer_0 = null;
+        this.in_buffer_1 = null;
+        this.s3_ll = null;
+        this.s3_ss = null;
+    }
+}
+
+// Define static constants after class definition if needed
+// (Already defined within the class using static keyword)
+
+// At the bottom of LameInternalFlags.js
+const MAX_HEADER_BUF = LameInternalFlags.MAX_HEADER_BUF; // Assign static to const
+export { LameInternalFlags, MAX_HEADER_BUF }; // Export both
+export default LameInternalFlags;

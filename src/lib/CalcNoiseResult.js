@@ -24,4 +24,4 @@ function CalcNoiseResult() {
     this.bits = 0;
 }
 
-module.exports = CalcNoiseResult;
+export { CalcNoiseResult };

@@ -30,4 +30,4 @@ ID3TagSpec.prototype.setModules = function(bs, ver) {
     this.ver = ver;
 };
 
-module.exports = ID3TagSpec;  // Export the constructor
+export { ID3TagSpec }

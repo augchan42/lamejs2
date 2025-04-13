@@ -1,6 +1,6 @@
 var fs = require("fs");
 var path = require("path")
-var common = require("./common.js");
+import * as common from './common.js';
 
 var lamejs = require("./index");
 

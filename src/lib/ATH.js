@@ -1,4 +1,4 @@
-var common = require('./common.js');
+import * as common from './common.js';
 var System = common.System;
 var VbrMode = common.VbrMode;
 var Float = common.Float;
@@ -14,7 +14,7 @@ var new_int = common.new_int;
 var new_int_n = common.new_int_n;
 var assert = common.assert;
 
-var Encoder = require('./Encoder.js');
+import { Encoder } from './Encoder.js';
 
 /**
  * ATH related stuff, if something new ATH related has to be added, please plug
@@ -76,4 +76,4 @@ function ATH() {
     this.eql_w = new_float(Encoder.BLKSIZE / 2);
 }
 
-module.exports = ATH;
+export { ATH };

@@ -1,4 +1,4 @@
-var common = require('./common.js');
+import * as common from './common.js';
 var new_float = common.new_float;
 var new_int = common.new_int;
 var assert = common.assert;
@@ -11,4 +11,4 @@ function CalcNoiseData() {
     this.noise_log = new_float(39);
 }
 
-module.exports = CalcNoiseData;
+export { CalcNoiseData };

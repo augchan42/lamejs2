@@ -14,4 +14,4 @@ MPEGMode.DUAL_CHANNEL = new MPEGMode(2);
 MPEGMode.MONO = new MPEGMode(3);
 MPEGMode.NOT_SET = new MPEGMode(4);
 
-module.exports = MPEGMode;
+export { MPEGMode };
